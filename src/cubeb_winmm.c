@@ -300,7 +300,7 @@ cubeb_stream_init(cubeb * ctx, cubeb_stream ** stream, char const * stream_name,
   /* XXX: cubeb_buffer_callback will be called during waveOutOpen, so all
      other initialization must be complete before calling it. */
   r = waveOutOpen(&stm->waveout, WAVE_MAPPER, &wfx.Format,
-                  (DWORD_PTR) NULL, (DWORD_PTR) ctx->thread_id, CALLBACK_THREAD);
+                  (DWORD_PTR) ctx->thread_id, (DWORD_PTR) NULL, CALLBACK_THREAD);
   if (r != MMSYSERR_NOERROR) {
     cubeb_stream_destroy(stm);
     return CUBEB_ERROR;
