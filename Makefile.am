@@ -21,23 +21,25 @@ cubebinclude_HEADERS = include/cubeb/cubeb.h include/cubeb/cubeb-stdint.h
 
 lib_LTLIBRARIES = src/libcubeb.la
 
+src_libcubeb_la_SOURCES = src/cubeb_lw_stream.c
+
 if PULSE
-src_libcubeb_la_SOURCES = src/cubeb_pulse.c
+src_libcubeb_la_SOURCES += src/cubeb_pulse.c
 endif
 if ALSA
-src_libcubeb_la_SOURCES = src/cubeb_alsa.c
+src_libcubeb_la_SOURCES += src/cubeb_alsa.c
 endif
 if COREAUDIO
-src_libcubeb_la_SOURCES = src/cubeb_coreaudio.c
+src_libcubeb_la_SOURCES += src/cubeb_coreaudio.c
 endif
 if WAVE
-src_libcubeb_la_SOURCES = src/cubeb_winmm.c
+src_libcubeb_la_SOURCES += src/cubeb_winmm.c
 endif
 if DSOUND
-src_libcubeb_la_SOURCES = src/cubeb_directsound.c
+src_libcubeb_la_SOURCES += src/cubeb_directsound.c
 endif
 if SNDIO
-src_libcubeb_la_SOURCES = src/cubeb_sndio.c
+src_libcubeb_la_SOURCES += src/cubeb_sndio.c
 endif
 
 EXTRA_src_libcubeb_la_SOURCES = \
@@ -47,13 +49,16 @@ EXTRA_src_libcubeb_la_SOURCES = \
 
 src_libcubeb_la_LDFLAGS = -pthread -export-symbols-regex '^cubeb_' $(platform_lib)
 
-noinst_PROGRAMS = test/test_sanity test/test_tone
+noinst_PROGRAMS = test/test_sanity test/test_tone test/test_tone_lw
 
 test_test_sanity_SOURCES = test/test_sanity.c
 test_test_sanity_LDADD = -lm src/libcubeb.la
 
 test_test_tone_SOURCES = test/test_tone.c
 test_test_tone_LDADD = -lm src/libcubeb.la
+
+test_test_tone_lw_SOURCES = test/test_tone_lw.c
+test_test_tone_lw_LDADD = -lm src/libcubeb.la
 
 TESTS = test/test_sanity
 
