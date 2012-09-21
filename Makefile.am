@@ -30,7 +30,7 @@ if ALSA
 src_libcubeb_la_SOURCES += src/cubeb_alsa.c
 endif
 if COREAUDIO
-src_libcubeb_la_SOURCES = src/cubeb_audiounit.c
+src_libcubeb_la_SOURCES += src/cubeb_audiounit.c
 endif
 if WAVE
 src_libcubeb_la_SOURCES += src/cubeb_winmm.c

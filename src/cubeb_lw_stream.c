@@ -12,14 +12,35 @@
 #include "cubeb/cubeb_lw.h"
 
 /* TODO
+   - first pass:
+     - assume input is float32
+     - assume output is float32
+     - assume input is mono or stereo
+     - assume output is stereo
+     - large (or dynamic) lwstream list, no 32 lwstream limit!
+
    - support lwstream volumes
      - support stream volumes, too
      - PA flat volume style?
+   - query backend for best/preferred output format
    - support all sample formats
    - support all channels (provide mixup/down)
    - support all sample rates (provide resampler)
+     - pluggable resampler (pass in fptr, allows sharing speex code already in firefox)
    - support multiple latencies (low priority)
    - support alternate buffer formats (non-interleaved)
+   - adding new lwstream while running - possible to avoid waiting for next buffer?
+   - deal with position wrapping
+   - dynamic stream format/rate changes? or just allow new lwstream with fade in/out?
+
+   backend output:
+   s                           e
+   |                           |
+              ^
+          current pos
+
+   if streams join on refill boundary, mark start offset
+   then stream position is (now-offset)/scale.
  */
 
 #define CUBEB_OUTPUT_RATE 44100
@@ -30,6 +51,7 @@
 struct cubeb_lw_stream {
   int inuse;
   int running;
+  cubeb_stream_params params;
   cubeb_data_callback data_callback;
   cubeb_state_callback state_callback;
   void * user_ptr;
@@ -39,7 +61,6 @@ struct cubeb_lw {
   cubeb * context;
   cubeb_stream * stream;
   cubeb_lw_stream streams[16];
-  size_t bytes_per_frame;
   cubeb_stream_params params;
 };
 
@@ -53,34 +74,51 @@ clamp(float f)
   return f;
 }
 
-static void
-mix_into(void * destination, void * source, long nframes, cubeb_sample_format format)
+static unsigned int
+bytes_to_frames(cubeb_stream_params params, unsigned int bytes)
 {
-  assert(format == CUBEB_SAMPLE_FLOAT32NE);
+  unsigned int bpf = sizeof(float) * params.channels;
+  assert(bytes % bpf == 0);
+  return bytes / bpf;
+}
+
+static unsigned int
+frames_to_bytes(cubeb_stream_params params, unsigned int frames)
+{
+  return frames * sizeof(float) * params.channels;
+}
+
+static void
+mix_into(void * destination, cubeb_stream_params dstfmt,
+         void * source, cubeb_stream_params srcfmt, long nframes)
+{
+  assert(srcfmt.format == dstfmt.format && srcfmt.channels == dstfmt.channels);
   float * dst = destination;
   float * src = source;
 
-  for (int i = 0; i < nframes * 2; i += 2) {
-    dst[i] = clamp(dst[i] + src[i]);
-    dst[i + 1] = clamp(dst[i + 1] + src[i + 1]);
+  for (int i = 0; i < nframes; i += dstfmt.channels) {
+    for (int j = 0; j < dstfmt.channels; ++j) {
+      dst[i + j] = clamp(dst[i + j] + src[i + j]);
+    }
   }
 }
 
 static long
-cubeb_lw_data_callback(cubeb_stream * stream, void * user_ptr, void * buffer, long nframes)
+cubeb_lw_data_callback(cubeb_stream * stream, void * user_ptr, void * output, long nframes)
 {
   cubeb_lw * ctx = user_ptr;
-  void * mixbuffer;
+  unsigned char * input;
   cubeb_lw_stream * lwstream;
   long got;
 
   // XXX assumes zeroed memory is equivalent to IEEE 0.0 float
-  memset(buffer, 0, nframes * ctx->bytes_per_frame);
+  // XXX or can cubeb guarantee these are already zero?
+  memset(output, 0, frames_to_bytes(ctx->params, nframes));
 
   // XXX assumes zeroed memory is equivalent to IEEE 0.0 float
   // XXX this doesn't need to be zeroed, also rename it to something temp-sounding
-  mixbuffer = calloc(nframes, ctx->bytes_per_frame);
-  assert(mixbuffer);
+  input = calloc(nframes, frames_to_bytes(ctx->params, 1));
+  assert(input);
 
   // XXX assume all lwstreams use same sample format
   for (int i = 0; i < CUBEB_STREAM_MAX; ++i) {
@@ -89,19 +127,35 @@ cubeb_lw_data_callback(cubeb_stream * stream, void * user_ptr, void * buffer, lo
       continue;
     }
 
-    got = lwstream->data_callback((cubeb_stream *) lwstream, lwstream->user_ptr, mixbuffer, nframes);
+    got = lwstream->data_callback((cubeb_stream *) lwstream, lwstream->user_ptr, input, nframes);
     assert(got == nframes); // XXX handle drain later
+    assert(got >= 0); // XXX handle errors later
 
-    mix_into(buffer, mixbuffer, nframes, ctx->params.format); // XXX need src and dst formats
+    // silence remaining buffer space
+    memset(input + frames_to_bytes(ctx->params, got), 0, frames_to_bytes(ctx->params, got - nframes));
+
+    // XXX don't need to silence buffer if we only mix what we got!
+    mix_into(output, ctx->params, input, lwstream->params, got);
   }
 
-  free(mixbuffer);
+  free(input);
   return nframes; // XXX handle drain
 }
 
 static void
 cubeb_lw_state_callback(cubeb_stream * stream, void * user_ptr, cubeb_state state)
 {
+  cubeb_lw * ctx = user_ptr;
+  cubeb_lw_stream * lwstream;
+
+  for (int i = 0; i < CUBEB_STREAM_MAX; ++i) {
+    lwstream = &ctx->streams[i];
+    if (!lwstream->inuse) { // XXX need a form of the is running test here
+      continue;
+    }
+
+    lwstream->state_callback((cubeb_stream *) lwstream, lwstream->user_ptr, state);
+  }
 }
 
 int
@@ -123,8 +177,6 @@ cubeb_lw_init(cubeb_lw ** context, char const * context_name)
   ctx->params.format = CUBEB_SAMPLE_FLOAT32NE;
   ctx->params.rate = CUBEB_OUTPUT_RATE;
   ctx->params.channels = CUBEB_OUTPUT_CHANNELS;
-
-  ctx->bytes_per_frame = sizeof(float) * ctx->params.channels;
 
   r = cubeb_stream_init(ctx->context, &ctx->stream, "Cubeb mixer - output",
                         ctx->params, CUBEB_LATENCY, cubeb_lw_data_callback,
@@ -189,6 +241,7 @@ cubeb_lw_stream_init(cubeb_lw * context, cubeb_lw_stream ** stream, char const *
     return CUBEB_ERROR;
   }
 
+  stm->params = stream_params;
   stm->data_callback = data_callback;
   stm->state_callback = state_callback;
   stm->user_ptr = user_ptr;
@@ -200,6 +253,7 @@ cubeb_lw_stream_init(cubeb_lw * context, cubeb_lw_stream ** stream, char const *
 void
 cubeb_lw_stream_destroy(cubeb_lw_stream * stream)
 {
+  // XXX if this was the last stream, suspend the backend stream
   assert(stream);
   memset(stream, 0, sizeof(*stream));
   stream->inuse = 0;
@@ -208,6 +262,7 @@ cubeb_lw_stream_destroy(cubeb_lw_stream * stream)
 int
 cubeb_lw_stream_start(cubeb_lw_stream * stream)
 {
+  // XXX if this was the last stream, suspend the backend stream
   assert(stream);
   stream->running = 1;
   return CUBEB_OK;
@@ -216,6 +271,7 @@ cubeb_lw_stream_start(cubeb_lw_stream * stream)
 int
 cubeb_lw_stream_stop(cubeb_lw_stream * stream)
 {
+  // XXX if this was the last stream, suspend the backend stream
   assert(stream);
   stream->running = 0;
   return CUBEB_OK;
@@ -224,6 +280,9 @@ cubeb_lw_stream_stop(cubeb_lw_stream * stream)
 int
 cubeb_lw_stream_get_position(cubeb_lw_stream * stream, uint64_t * position)
 {
+  // XXX lwstream pos is, in backend stream units: p = now - startoffset
+  //     then lwstream pos is p / scale factor
+  //     where scale factor is based on resampling rate
   assert(stream);
   *position = 0;
   return CUBEB_OK;
