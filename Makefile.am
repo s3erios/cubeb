@@ -1,8 +1,8 @@
-AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-xz subdir-objects
+AUTOMAKE_OPTIONS = foreign 1.10 dist-bzip2 subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 
-INCLUDES = -I$(top_srcdir)/include -I.
-AM_CFLAGS = -ansi -pedantic -std=c99 -Wall -Wextra -Wno-long-long -O0 -g -Wno-unused
+AM_CPPFLAGS = -I$(top_srcdir)/include -I. -I$(top_srcdir)/src
+AM_CFLAGS = -ansi -std=gnu99 -Wall -Wextra -Wno-long-long -O0 -Wno-unused -g
 
 SUBDIRS = docs
 
@@ -21,41 +21,66 @@ cubebinclude_HEADERS = include/cubeb/cubeb.h include/cubeb/cubeb-stdint.h
 
 lib_LTLIBRARIES = src/libcubeb.la
 
-src_libcubeb_la_SOURCES = src/cubeb_lw_stream.c
+src_libcubeb_la_SOURCES = src/cubeb.c src/cubeb_lw_stream.c
 
 if PULSE
 src_libcubeb_la_SOURCES += src/cubeb_pulse.c
 endif
+if JACK
+src_libcubeb_la_SOURCES += src/cubeb_jack.cpp
+endif
 if ALSA
 src_libcubeb_la_SOURCES += src/cubeb_alsa.c
 endif
-if COREAUDIO
+if AUDIOUNIT
 src_libcubeb_la_SOURCES += src/cubeb_audiounit.c
 endif
-if WAVE
+if AUDIOQUEUE
+src_libcubeb_la_SOURCES += src/cubeb_audioqueue.c
+endif
+if WASAPI
+src_libcubeb_la_SOURCES += src/cubeb_wasapi.cpp
+endif
+if WINMM
 src_libcubeb_la_SOURCES += src/cubeb_winmm.c
 endif
-if DSOUND
-src_libcubeb_la_SOURCES += src/cubeb_directsound.c
+if DIRECTSOUND
+src_libcubeb_la_SOURCES += src/cubeb_directsound.cpp
 endif
 if SNDIO
 src_libcubeb_la_SOURCES += src/cubeb_sndio.c
 endif
+if OPENSL
+src_libcubeb_la_SOURCES += src/cubeb_opensl.c
+endif
+if AUDIOTRACK
+src_libcubeb_la_SOURCES += src/cubeb_audiotrack.c
+endif
+if SPEEX
+src_libcubeb_la_SOURCES += src/speex/resample.c
+endif
 
 EXTRA_src_libcubeb_la_SOURCES = \
-	cubeb_alsa.c cubeb_pulse.c \
-	cubeb_audiounit.c cubeb_audioqueue.c \
-	cubeb_sndio.c cubeb_directsound.c cubeb_winmm.c
+        src/cubeb.c src/cubeb_lw_stream.c \
+	src/cubeb_jack.cpp \
+	src/cubeb_alsa.c src/cubeb_pulse.c \
+	src/cubeb_audiounit.c src/cubeb_audioqueue.c \
+	src/cubeb_sndio.c src/cubeb_directsound.cpp \
+	src/cubeb_winmm.c src/cubeb_wasapi.cpp src/speex_resampler/resample.c \
+	src/cubeb_opensl.c src/cubeb_audiotrack.c
 
-src_libcubeb_la_LDFLAGS = -pthread -export-symbols-regex '^cubeb_' $(platform_lib)
+src_libcubeb_la_LDFLAGS = -pthread -export-symbols-regex '^cubeb_' $(platform_lib) -no-undefined
 
-noinst_PROGRAMS = test/test_sanity test/test_tone test/test_tone_lw
+noinst_PROGRAMS = test/test_sanity test/test_tone test/test_audio test/test_tone_lw
 
-test_test_sanity_SOURCES = test/test_sanity.c
-test_test_sanity_LDADD = -lm src/libcubeb.la
+test_test_sanity_SOURCES = test/test_sanity.c test/common.c
+test_test_sanity_LDADD = -lm src/libcubeb.la $(platform_lib)
 
-test_test_tone_SOURCES = test/test_tone.c
-test_test_tone_LDADD = -lm src/libcubeb.la
+test_test_tone_SOURCES = test/test_tone.c test/common.c
+test_test_tone_LDADD = -lm src/libcubeb.la $(platform_lib)
+
+test_test_audio_SOURCES = test/test_audio.c test/common.c
+test_test_audio_LDADD = -lm src/libcubeb.la $(platform_lib)
 
 test_test_tone_lw_SOURCES = test/test_tone_lw.c
 test_test_tone_lw_LDADD = -lm src/libcubeb.la
@@ -72,3 +97,4 @@ debug:
 
 profile:
 	$(MAKE) all CFLAGS="@PROFILE@"
+

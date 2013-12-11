@@ -6,19 +6,15 @@
  */
 
 /* libcubeb api/function test. Plays a simple tone. */
-
+#define _XOPEN_SOURCE 500
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <math.h>
 
 #include "cubeb/cubeb.h"
+#include "common.h"
 
 #define SAMPLE_FREQUENCY 48000
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /* store the phase of the generated waveform */
 struct cb_user_data {
@@ -103,7 +99,7 @@ int main(int argc, char *argv[])
   }
 
   cubeb_stream_start(stream);
-  sleep(1);
+  delay(500);
   cubeb_stream_stop(stream);
 
   cubeb_stream_destroy(stream);
