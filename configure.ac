@@ -46,6 +46,8 @@ AM_PROG_CC_C_O
 AC_LIBTOOL_WIN32_DLL
 AM_PROG_LIBTOOL
 
+NEED_SPEEX=0
+
 AC_ARG_WITH([pulse],
             AS_HELP_STRING([--with-pulse], [with PulseAudio @<:@default=check@:>@]))
 AS_IF([test "x$with_pulse" != xno],
