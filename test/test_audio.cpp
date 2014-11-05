@@ -105,15 +105,9 @@ int supports_float32(const char* backend_id)
           strcmp(backend_id, "audiotrack") != 0);
 }
 
-/* Some backends don't have code to deal with more than mono or stereo. */
-int supports_channel_count(const char* backend_id, int nchannels)
+int run_test(unsigned int num_channels, int sampling_rate, int is_float)
 {
-  return nchannels <= 2 ||
-    (strcmp(backend_id, "opensl") != 0 && strcmp(backend_id, "audiotrack") != 0);
-}
-
-int run_test(int num_channels, int sampling_rate, int is_float)
-{
+  uint32_t max_num_channels;
   int ret = CUBEB_OK;
 
   cubeb *ctx = NULL;
@@ -127,10 +121,15 @@ int run_test(int num_channels, int sampling_rate, int is_float)
     goto cleanup;
   }
 
-  backend_id = cubeb_get_backend_id(ctx);
+  ret = cubeb_get_max_channel_count(ctx, &max_num_channels);
+  if (ret != CUBEB_OK) {
+    fprintf(stderr, "Error while retrieving maximum number of channels\n");
+    goto cleanup;
+  }
 
+  backend_id = cubeb_get_backend_id(ctx);
   if ((is_float && !supports_float32(backend_id)) ||
-      !supports_channel_count(backend_id, num_channels)) {
+      max_num_channels < num_channels) {
     /* don't treat this as a test failure. */
     goto cleanup;
   }
@@ -233,7 +232,7 @@ cleanup:
 
 void run_channel_rate_test()
 {
-  int channel_values[] = {
+  unsigned int channel_values[] = {
     1,
     2,
     3,
