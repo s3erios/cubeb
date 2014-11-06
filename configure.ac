@@ -48,6 +48,18 @@ AM_PROG_LIBTOOL
 
 NEED_SPEEX=0
 
+HAVE_PULSE=0
+HAVE_JACK=0
+HAVE_ALSA=0
+HAVE_AUDIOUNIT=0
+HAVE_AUDIOQUEUE=0
+HAVE_SNDIO=0
+HAVE_OPENSL=0
+HAVE_AUDIOTRACK=0
+HAVE_DIRECTSOUND=0
+HAVE_WASAPI=0
+HAVE_WINMM=0
+
 AC_ARG_WITH([pulse],
             AS_HELP_STRING([--with-pulse], [with PulseAudio @<:@default=check@:>@]))
 AS_IF([test "x$with_pulse" != xno],
@@ -56,7 +68,6 @@ AS_IF([test "x$with_pulse" != xno],
        PULSE_LIBS="-ldl"
        AC_DEFINE([USE_PULSE], [], [Use PulseAudio])
       ], [
-       HAVE_PULSE=0
        AS_IF([test "x$with_pulse" = xyes], [AC_MSG_ERROR(PulseAudio not detected)])])])
 AM_CONDITIONAL([PULSE], [test $HAVE_PULSE -eq 1])
 
@@ -69,7 +80,6 @@ AS_IF([test "x$with_jack" != xno],
        NEED_SPEEX=1
        AC_DEFINE([USE_JACK], [], [Use JACK])
       ], [
-       HAVE_JACK=0
        AS_IF([test "x$with_jack" = xyes], [AC_MSG_ERROR(JACK not detected)])])])
 AM_CONDITIONAL([JACK], [test $HAVE_JACK -eq 1])
 
@@ -80,7 +90,6 @@ AS_IF([test "x$with_alsa" != xno],
        HAVE_ALSA=1
        AC_DEFINE([USE_ALSA], [], [Use ALSA])
       ], [
-       HAVE_ALSA=0
        AS_IF([test "x$with_alsa" = xyes], [AC_MSG_ERROR(ALSA not detected)])])])
 AM_CONDITIONAL([ALSA], [test $HAVE_ALSA -eq 1])
 
@@ -92,7 +101,6 @@ AS_IF([test "x$with_audiounit" != xno],
        AUDIOUNIT_LIBS="-framework CoreServices -framework AudioUnit -framework CoreAudio"
        AC_DEFINE([USE_AUDIOUNIT], [], [Use AudioUnit])
       ], [
-       HAVE_AUDIOUNIT=0
        AS_IF([test "x$with_audiounit" = xyes], [AC_MSG_ERROR(AudioUnit not detected)])])])
 AM_CONDITIONAL([AUDIOUNIT], [test $HAVE_AUDIOUNIT -eq 1])
 
@@ -104,7 +112,6 @@ AS_IF([test "x$with_audioqueue" != xno],
        AUDIOQUEUE_LIBS="-framework CoreServices -framework AudioToolbox"
        AC_DEFINE([USE_AUDIOQUEUE], [], [Use AudioQueue])
       ], [
-       HAVE_AUDIOQUEUE=0
        AS_IF([test "x$with_audioqueue" = xyes], [AC_MSG_ERROR(AudioQueue not detected)])])])
 AM_CONDITIONAL([AUDIOQUEUE], [test $HAVE_AUDIOQUEUE -eq 1])
 
@@ -116,7 +123,6 @@ AS_IF([test "x$with_sndio" != xno],
        SNDIO_LIBS="-lsndio"
        AC_DEFINE([USE_SNDIO], [], [Use sndio])
       ], [
-       HAVE_SNDIO=0
        AS_IF([test "x$with_sndio" = xyes], [AC_MSG_ERROR(sndio not detected)])])])
 AM_CONDITIONAL([SNDIO], [test $HAVE_SNDIO -eq 1])
 
@@ -127,7 +133,6 @@ AS_IF([test "x$with_opensl" != xno],
        HAVE_OPENSL=1
        AC_DEFINE([USE_OPENSL], [], [Use OpenSL])
       ], [
-       HAVE_OPENSL=0
        AS_IF([test "x$with_opensl" = xyes], [AC_MSG_ERROR(OpenSL not detected)])])])
 AM_CONDITIONAL([OPENSL], [test $HAVE_OPENSL -eq 1])
 
@@ -138,7 +143,6 @@ AS_IF([test "x$with_audiotrack" != xno],
        HAVE_AUDIOTRACK=1
        AC_DEFINE([USE_AUDIOTRACK], [], [Use AudioTrack])
       ], [
-       HAVE_AUDIOTRACK=0
        AS_IF([test "x$with_audiotrack" = xyes], [AC_MSG_ERROR(AudioTrack not detected)])])])
 AM_CONDITIONAL([AUDIOTRACK], [test $HAVE_AUDIOTRACK -eq 1])
 
@@ -150,7 +154,6 @@ AM_CONDITIONAL([AUDIOTRACK], [test $HAVE_AUDIOTRACK -eq 1])
 #       DIRECTSOUND_LIBS="-ldsound"
 #       AC_DEFINE([USE_DIRECTSOUND], [], [Use DirectSound])
 #      ], [
-       HAVE_DIRECTSOUND=0
 #       AS_IF([test "x$with_directsound" = xyes], [AC_MSG_ERROR(DirectSound not detected)])
 #      ], [#include <windows.h>])])
 AM_CONDITIONAL([DIRECTSOUND], [test $HAVE_DIRECTSOUND -eq 1])
@@ -164,7 +167,6 @@ AS_IF([test "x$with_wasapi" != xno],
        AC_DEFINE([USE_WASAPI], [], [Use WASAPI])
        WASAPI_LIBS="-lole32"
       ], [
-       HAVE_WASAPI=0
        AS_IF([test "x$with_wasapi" = xyes], [AC_MSG_ERROR(WASAPI not detected)])
       ], [#include <windows.h>])])
 AM_CONDITIONAL([WASAPI], [test $HAVE_WASAPI -eq 1])
@@ -177,7 +179,6 @@ AS_IF([test "x$with_winmm" != xno],
        DIRECTSOUND_LIBS="-lwinmm"
        AC_DEFINE([USE_WINMM], [], [Use WinMM])
       ], [
-       HAVE_WINMM=0
        AS_IF([test "x$with_winmm" = xyes], [AC_MSG_ERROR(WinMM not detected)])
       ], [#include <windows.h>])])
 AM_CONDITIONAL([WINMM], [test $HAVE_WINMM -eq 1])
