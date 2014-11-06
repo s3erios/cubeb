@@ -137,7 +137,7 @@ AS_IF([test "x$with_opensl" != xno],
 AM_CONDITIONAL([OPENSL], [test $HAVE_OPENSL -eq 1])
 
 AC_ARG_WITH([audiotrack],
-            AS_HELP_STRING([--with-audiotrack], [with OpenSL @<:@default=check@:>@]))
+            AS_HELP_STRING([--with-audiotrack], [with AudioTrack @<:@default=check@:>@]))
 AS_IF([test "x$with_audiotrack" != xno],
       [AC_CHECK_HEADER([android/log.h], [
        HAVE_AUDIOTRACK=1
